@@ -182,15 +182,25 @@ class OrcaProc(QmProc):
 
         if "composite" not in functype:
             main.append(basis)
+            # Set def2/J in case of def2 basis
+            if "def2" in basis.lower():
+                main.append("def2/J")
+            # Otherwise use autoaux
+            else:
+                main.append("autoaux")
 
-        # set  RI def2/J,   RIJCOSX def2/J
-
-        # Set def2/J in case of def2 basis
-        if "def2" in basis.lower():
-            main.append("def2/J")
-        # Otherwise use autoaux
-        else:
-            main.append("autoaux")
+            # try to apply gcp if basis set available
+            # TODO - extend this
+            gcp_keywords = {
+                "minis": "MINIS",
+                "sv": "SV",
+                "6-31g(d)": "631GD",
+                "def2-sv(p)": "SV(P)",
+                "def2-svp": "SVP",
+                "def2-tzvp": "TZ",
+            }
+            if basis.lower() in gcp_keywords.keys():
+                main.append(f"GCP(DFT/{gcp_keywords[basis.lower()]})")
 
         # settings for double hybrids
         if "double" in functype:
@@ -201,11 +211,13 @@ class OrcaProc(QmProc):
                 main.append("frozencore")
                 pregeom.extend(["%mp2", "RI true", "end"])
 
-            def2cbasis = ("def2-svp", "def2-tzvp", "def2-tzvpp", "def2-qzvpp")
-            if basis.lower() in def2cbasis:
-                main.append(f"{basis}/C")
-            else:
-                main.append("def2-tzvpp/C")
+            # NOTE: there is no composite dh but just in case:
+            if "composite" not in functype:
+                def2cbasis = ("def2-svp", "def2-tzvp", "def2-tzvpp", "def2-qzvpp")
+                if basis.lower() in def2cbasis:
+                    main.append(f"{basis}/C")
+                else:
+                    main.append("def2-tzvpp/C")
 
             if not orca5:
                 main.extend(["GRIDX6", "NOFINALGRIDX"])
@@ -235,20 +247,6 @@ class OrcaProc(QmProc):
 
         if disp == "nl" and not orca5:
             main.append("vdwgrid3")
-
-        if "composite" not in functype:
-            # try to apply gcp if basis set available
-            # TODO - extend this
-            gcp_keywords = {
-                "minis": "MINIS",
-                "sv": "SV",
-                "6-31g(d)": "631GD",
-                "def2-sv(p)": "SV(P)",
-                "def2-svp": "SVP",
-                "def2-tzvp": "TZ",
-            }
-            if basis.lower() in gcp_keywords.keys():
-                main.append(f"GCP(DFT/{gcp_keywords[basis.lower()]})")
 
         # add job keyword for geometry optimizations
         # with ANCOPT
